@@ -1,39 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Asteroid Impact Energy Model</title>
+    <style>
+        body { font-family: sans-serif; max-width: 900px; margin: 40px auto; line-height: 1.6; background-color: #f4f4f9; }
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        .container { display: flex; gap: 30px; }
+        .input-form { flex: 1; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
+        .nearest-list { flex: 0 0 300px; padding: 20px; border-radius: 8px; background-color: #eaf2f8; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
+        .nearest-list h2 { color: #3498db; margin-top: 0; border-bottom: 1px dashed #3498db; padding-bottom: 5px; }
+        .nearest-list ul { list-style-type: none; padding: 0; }
+        .nearest-list li { margin-bottom: 8px; padding: 5px; border-bottom: 1px dotted #ccc; display: flex; justify-content: space-between; font-size: 0.95em;}
+        .nearest-list li span { font-weight: bold; color: #2c3e50; }
+        
+        label { display: block; margin-top: 15px; font-weight: bold; color: #34495e; }
+        input[type="text"], select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #e74c3c; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px; width: 100%; font-size: 16px; }
+        button:hover { background-color: #c0392b; }
+        
+        #results { margin-top: 30px; padding: 20px; border: 1px solid #bdc3c7; border-radius: 8px; background-color: #ecf0f1; }
+        .result-item { margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px dotted #ccc; }
+        .result-item strong { color: #e74c3c; }
+        .success { color: #27ae60; font-weight: bold; }
+        .failure { color: #c0392b; font-weight: bold; }
+    </style>
 </head>
 <body>
     <h1>☄️ Asteroid Impact Energy Predictor</h1>
     <p>Use the form to calculate the estimated kinetic energy for an asteroid given its name and assumed composition (density).</p>
 
     <div class="container">
+        
         <div class="nearest-list">
             <h2>Top 5 Nearest Asteroids</h2>
+            <p style="font-size: 0.8em; color: #7f8c8d;">(Data is mock/example-based. Use **99942 Apophis** to test the calculation.)</p>
             <ul>
-                {% for name, distance in top_asteroids %}
-                    <li><span>{{ name }}</span><span>{{ "{:,.0f}".format(distance) }} km</span></li>
-                {% endfor %}
+                <li><span>2023 NT1</span><span>60,000 km</span></li>
+                <li><span>99942 Apophis</span><span>31,000 km</span></li>
+                <li><span>2024 MK</span><span>90,000 km</span></li>
+                <li><span>(2002 AZ1)</span><span>125,000 km</span></li>
+                <li><span>433 Eros</span><span>150,000 km</span></li>
             </ul>
         </div>
         
         <div class="input-form">
-            <form id="impact-form">
+            <form id="impact-form"> 
                 <label for="asteroid_name">Asteroid Name or NEO ID</label>
                 <input type="text" id="asteroid_name" name="asteroid_name" placeholder="E.g., 99942 Apophis" required>
 
                 <label for="density_value">Assumed Asteroid Type (Density)</label>
                 <select id="density_value" name="density_value">
-                    {% for type, density in densities.items() %}
-                        <option value="{{ density }}" {% if type == 'Rocky' %}selected{% endif %}>
-                            {{ type }} ({{ "{:,.0f}".format(density) }} kg/m³)
-                        </option>
-                    {% endfor %}
+                    <option value="1300">C-type (Carbonaceous) (1,300 kg/m³)</option>
+                    <option value="2700">S-type (Stony) (2,700 kg/m³)</option>
+                    <option value="5000">M-type (Metallic) (5,000 kg/m³)</option>
+                    <option value="3000" selected>Rocky (3,000 kg/m³)</option>
                 </select>
 
                 <button type="submit">Calculate Impact Energy</button>
             </form>
         </div>
+        
     </div>
 
     <div id="results">
@@ -43,42 +70,37 @@
 
     <script>
         document.getElementById('impact-form').addEventListener('submit', function(event) {
-            event.preventDefault(); // Stops page reload
+            event.preventDefault(); 
             
-            const formData = new FormData(event.target);
             const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<h2>Calculation Results</h2><p>Attempting to calculate...</p>';
 
-            resultsDiv.innerHTML = '<h2>Calculation Results</h2><p>Calculating...</p>';
-
-            // 1. INPUT: Send data to the Python model via the Flask route
-            fetch('/calculate_impact', {
+            // !!! WARNING !!! 
+            // This fetch call requires the Flask server (app.py) to be running.
+            // Since this is on GitHub Pages, the server is NOT running, so this
+            // will fail with a Network Error (404/CORS).
+            
+            fetch('/calculate_impact', { 
                 method: 'POST',
-                body: formData,
+                body: new FormData(event.target),
             })
             .then(response => response.json())
             .then(data => {
-                // 2. OUTPUT: Display the results returned by the Python model
-                resultsDiv.innerHTML = '<h2>Calculation Results</h2>';
-
+                // This block will only run if the external Python server is live
+                // and successfully returns JSON data.
                 if (data.error) {
-                    resultsDiv.innerHTML += `<p style="color: red;">Error: ${data.error}</p>`;
-                    return;
+                    resultsDiv.innerHTML = '<h2>Calculation Results</h2><p class="failure">Error: ' + data.error + '</p>';
+                } else {
+                    // Success rendering logic goes here
+                    resultsDiv.innerHTML = '<h2>Calculation Results</h2><p class="success">Calculation Successful (via live Python server)!</p>';
                 }
-
-                let html = `
-                    <p style="font-weight: bold; color: green;">Analysis for Asteroid: ${data.name}</p>
-                    <div class="result-item">Potentially Hazardous: ${data.is_potentially_hazardous ? 'YES' : 'No'}</div>
-                    <div class="result-item">Assumed Density: ${data.assumed_density_kg_m3}</div>
-                    <h3>IMPACT ENERGY PREDICTION</h3>
-                    <div class="result-item">Kinetic Energy: <strong>${data.kinetic_energy_joules} Joules</strong></div>
-                    <div class="result-item">Equivalent Energy: <strong>${data.impact_energy_megatons_tnt}</strong></div>
-                    <h4>Interpretation:</h4>
-                    <p>${data.interpretation}</p>
-                `;
-                resultsDiv.innerHTML += html;
             })
             .catch(error => {
-                resultsDiv.innerHTML = `<h2>Calculation Results</h2><p style="color: red;">A network error occurred: ${error}</p>`;
+                // This is the expected result on GitHub Pages
+                resultsDiv.innerHTML = `<h2>Calculation Results</h2>
+                    <p class="failure">Calculation Failed: Cannot connect to Python model.</p>
+                    <p style="font-size: 0.9em;">**GitHub Pages only hosts static files (HTML/CSS/JS). It cannot run the Flask server needed to execute your model.**</p>
+                    <p style="font-size: 0.9em;">To make this work, you must deploy the <code>app.py</code> server to a cloud platform like Heroku or Render.</p>`;
             });
         });
     </script>
